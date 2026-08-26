@@ -1,0 +1,11 @@
+[workspace]
+resolver = "3"
+members = [
+    "vignette-core",
+    "vignette-cli",
+    "vignette-gui"
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
