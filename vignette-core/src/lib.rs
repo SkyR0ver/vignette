@@ -1,14 +1,25 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+mod error;
+mod hid;
+mod model;
+mod protocal;
+
+use error::HidResult;
+
+use crate::hid::{HidDevInfo, HidDevReaderWriter};
+
+pub async fn get_all() -> HidResult<Vec<HidDevInfo>> {
+    hid::get_all().await
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub async fn get() -> HidResult<Vec<HidDevInfo>> {
+    let supported_devices = get_all()
+        .await?
+        .into_iter()
+        .filter(model::is_supported)
+        .collect();
+    Ok(supported_devices)
+}
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+pub async fn open(dev: &HidDevInfo) -> HidResult<HidDevReaderWriter> {
+    hid::open(dev).await
 }
