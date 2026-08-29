@@ -33,7 +33,7 @@ impl HidDevWriter {
 
 pub type HidDevReaderWriter = (HidDevReader, HidDevWriter);
 
-pub(crate) async fn get_all() -> HidResult<Vec<HidDevInfo>> {
+pub async fn get_all() -> HidResult<Vec<HidDevInfo>> {
     let out = async_hid::HidBackend::default()
         .enumerate()
         .await?
@@ -43,7 +43,7 @@ pub(crate) async fn get_all() -> HidResult<Vec<HidDevInfo>> {
     Ok(out)
 }
 
-pub(crate) async fn open(devinfo: &HidDevInfo) -> HidResult<HidDevReaderWriter> {
+pub async fn open(devinfo: &HidDevInfo) -> HidResult<HidDevReaderWriter> {
     let device = async_hid::HidBackend::default()
         .query_devices(&devinfo.id)
         .await?
