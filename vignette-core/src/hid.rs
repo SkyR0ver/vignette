@@ -1,10 +1,23 @@
-use async_hid::AsyncHidWrite;
+use async_hid::{AsyncHidRead, AsyncHidWrite};
 use futures::StreamExt;
 
 use crate::error::{HidError, HidResult};
 
 type HidDevice = async_hid::Device;
 pub type HidDevInfo = async_hid::DeviceInfo;
+
+pub struct HidDevReader(async_hid::DeviceReader);
+
+impl HidDevReader {
+    pub async fn read_input_report(&mut self) -> HidResult<(u8, Vec<u8>)> {
+        let mut buf = vec![0u8; 64];
+        let len = self.0.read_input_report(&mut buf).await?;
+
+        let report_id = buf[0];
+        let data = buf[..len].to_vec();
+        Ok((report_id, data))
+    }
+}
 
 pub struct HidDevWriter(async_hid::DeviceWriter);
 
@@ -18,7 +31,6 @@ impl HidDevWriter {
     }
 }
 
-pub type HidDevReader = async_hid::DeviceReader;
 pub type HidDevReaderWriter = (HidDevReader, HidDevWriter);
 
 pub(crate) async fn get_all() -> HidResult<Vec<HidDevInfo>> {
@@ -38,5 +50,5 @@ pub(crate) async fn open(devinfo: &HidDevInfo) -> HidResult<HidDevReaderWriter> 
         .next()
         .ok_or(HidError::NotConnected)?;
     let (reader, writer) = device.open().await?;
-    Ok((reader, HidDevWriter(writer)))
+    Ok((HidDevReader(reader), HidDevWriter(writer)))
 }
