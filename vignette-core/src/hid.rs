@@ -14,7 +14,7 @@ impl HidDevReader {
         let len = self.0.read_input_report(&mut buf).await?;
 
         let report_id = buf[0];
-        let data = buf[..len].to_vec();
+        let data = buf[1..len].to_vec();
         Ok((report_id, data))
     }
 }
