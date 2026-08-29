@@ -1,7 +1,7 @@
 mod error;
 mod hid;
 mod model;
-mod protocal;
+pub mod protocol;
 
 use error::HidResult;
 
