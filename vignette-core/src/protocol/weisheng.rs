@@ -2,6 +2,8 @@ use std::io::Cursor;
 
 use binrw::{BinRead, BinWrite, binrw};
 
+use crate::error::{ProtoError, ProtoResult};
+
 pub const WS_REPORT_ID: u8 = 4;
 
 /// Data frame in the weisheng protocol.
@@ -119,7 +121,7 @@ impl WsCmd {
 pub async fn get_battery_level(
     reader: &mut crate::hid::HidDevReader,
     writer: &mut crate::hid::HidDevWriter,
-) -> Result<(u8, bool), Box<dyn std::error::Error>> {
+) -> ProtoResult<(u8, bool)> {
     // Send the request
     let request = WsFrame::new(WsCmd::GetBatteryLevel, None);
     let req_data = request.to_bytes();
@@ -128,19 +130,18 @@ pub async fn get_battery_level(
     // Read the response
     let (report_id, resp_data) = reader.read_input_report().await?;
     if report_id != WS_REPORT_ID {
-        return Err(format!("Unexpected report ID: {}", report_id).into());
+        return Err(ProtoError::InvalidReportId(report_id));
     }
 
     let response = WsFrame::from_bytes(&resp_data);
     if response.cmd != WsCmd::GetBatteryLevel {
-        return Err(format!("Unexpected command in response: {:?}", response.cmd).into());
+        return Err(ProtoError::ResponseMismatch);
     }
     if response.data.len() != 2 {
-        return Err(format!(
-            "Unexpected data length in response: {}",
-            response.data.len()
-        )
-        .into());
+        return Err(ProtoError::InvalidPayloadLength {
+            expected: 2,
+            actual: response.data.len(),
+        });
     }
 
     let battery_level = response.data[0];

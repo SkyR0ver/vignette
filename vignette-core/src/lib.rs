@@ -3,8 +3,7 @@ mod hid;
 mod model;
 mod protocol;
 
-use error::HidResult;
-
+use crate::error::HidResult;
 use crate::hid::{HidDevInfo, HidDevReaderWriter};
 
 pub use protocol::weisheng::get_battery_level;
