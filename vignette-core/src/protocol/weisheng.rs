@@ -2,7 +2,7 @@ use std::io::Cursor;
 
 use binrw::{BinRead, BinWrite, binrw};
 
-use crate::error::{ProtoError, ProtoResult};
+use crate::error::{BinResult, ProtoError, ProtoResult};
 
 pub const WS_REPORT_ID: u8 = 4;
 
@@ -51,9 +51,9 @@ impl WsFrame {
         }
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> Self {
+    pub fn from_bytes(bytes: &[u8]) -> BinResult<Self> {
         let mut cursor = Cursor::new(bytes);
-        WsFrame::read(&mut cursor).expect("Failed to read WsFrame from bytes")
+        WsFrame::read(&mut cursor)
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
@@ -133,15 +133,9 @@ pub async fn get_battery_level(
         return Err(ProtoError::InvalidReportId(report_id));
     }
 
-    let response = WsFrame::from_bytes(&resp_data);
+    let response = WsFrame::from_bytes(&resp_data)?;
     if response.cmd != WsCmd::GetBatteryLevel {
         return Err(ProtoError::ResponseMismatch);
-    }
-    if response.data.len() != 2 {
-        return Err(ProtoError::InvalidPayloadLength {
-            expected: 2,
-            actual: response.data.len(),
-        });
     }
 
     let battery_level = response.data[0];
