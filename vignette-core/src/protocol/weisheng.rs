@@ -105,6 +105,7 @@ pub enum WsCmd {
     GetFnKey,
     #[brw(magic(39u8))]
     SetFnKey,
+    Error,
 }
 
 impl WsCmd {
