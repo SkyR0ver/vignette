@@ -6,8 +6,7 @@ pub const WS_REPORT_ID: u8 = 4;
 
 /// Data frame in the weisheng protocol.
 ///
-/// The length of the frame is 64 bytes at most for a wired connection. For a
-/// wireless connection, the maximum length is 32 bytes. If the data to be
+/// The length of the frame is 63 bytes at most. If the data to be
 /// transmitted is too long, it will be fragmented into multiple frames.
 #[binrw]
 #[brw(magic(b"\0\0"), little)]
@@ -28,20 +27,17 @@ pub struct WsFrame {
 }
 
 impl WsFrame {
-    pub fn new(conn: WsConnType, cmd: WsCmd, data: Option<&[u8]>) -> Self {
+    pub fn new(cmd: WsCmd, data: Option<&[u8]>) -> Self {
         let data_len = data.map_or_default(|d| d.len());
-        let max_len = match conn {
-            WsConnType::Wired => 56,
-            WsConnType::Wireless => 24,
-        };
-        if data_len > max_len {
+        let frame_len = cmd.req_len();
+        if data_len > frame_len {
             panic!(
                 "Data fragmentation is not supported yet. Data length: {}, max length: {}",
-                data_len, max_len
+                data_len, frame_len
             );
         }
 
-        let mut frame_data = Vec::with_capacity(data_len);
+        let mut frame_data = Vec::with_capacity(frame_len);
         if let Some(data) = data {
             frame_data.extend_from_slice(data);
         }
@@ -64,11 +60,6 @@ impl WsFrame {
             .expect("Failed to write WsFrame to bytes");
         buf.into_inner()
     }
-}
-
-pub enum WsConnType {
-    Wired,
-    Wireless,
 }
 
 /// Command code in the weisheng protocol.
@@ -109,6 +100,13 @@ pub enum WsCmd {
 }
 
 impl WsCmd {
+    fn req_len(&self) -> usize {
+        match self {
+            WsCmd::GetBatteryLevel => 0,
+            _ => 56,
+        }
+    }
+
     /// Returns the expected length of the payload in the response frame.
     fn resp_len(&self) -> u8 {
         match self {
