@@ -16,13 +16,14 @@ pub struct WsFrame {
     /// Command code
     cmd: WsCmd,
     /// Length of the payload
+    #[br(calc = cmd.resp_len(), pad_after = 1)]
+    #[bw(try_calc = u8::try_from(data.len()))]
     len: u8,
     /// Offset of the payload if fragmented
     offset: u16,
-    /// Reserved, should be 0
-    rsv: u8,
     /// Payload data
     #[br(count = len)]
+    #[brw(pad_before = 1)]
     data: Vec<u8>,
 }
 
@@ -47,9 +48,7 @@ impl WsFrame {
 
         WsFrame {
             cmd,
-            len: data_len as u8,
             offset: 0,
-            rsv: 0,
             data: frame_data,
         }
     }
@@ -106,4 +105,14 @@ pub enum WsCmd {
     GetFnKey,
     #[brw(magic(39u8))]
     SetFnKey,
+}
+
+impl WsCmd {
+    /// Returns the expected length of the payload in the response frame.
+    fn resp_len(&self) -> u8 {
+        match self {
+            WsCmd::GetBatteryLevel => 2,
+            _ => 56,
+        }
+    }
 }
