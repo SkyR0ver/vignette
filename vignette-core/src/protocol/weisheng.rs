@@ -42,7 +42,7 @@ impl WsFrame {
 
         let mut frame_data = Vec::with_capacity(data_len);
         if let Some(data) = data {
-            frame_data[..data_len].copy_from_slice(data);
+            frame_data.extend_from_slice(data);
         }
 
         WsFrame {
