@@ -64,7 +64,7 @@ impl WsFrame {
 
 /// Command code in the weisheng protocol.
 #[binrw]
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum WsCmd {
     #[brw(magic(1u8))]
     StartQuickComm,
@@ -114,4 +114,36 @@ impl WsCmd {
             _ => 56,
         }
     }
+}
+
+pub async fn get_battery_level(
+    reader: &mut crate::hid::HidDevReader,
+    writer: &mut crate::hid::HidDevWriter,
+) -> Result<(u8, bool), Box<dyn std::error::Error>> {
+    // Send the request
+    let request = WsFrame::new(WsCmd::GetBatteryLevel, None);
+    let req_data = request.to_bytes();
+    writer.write_output_report(WS_REPORT_ID, &req_data).await?;
+
+    // Read the response
+    let (report_id, resp_data) = reader.read_input_report().await?;
+    if report_id != WS_REPORT_ID {
+        return Err(format!("Unexpected report ID: {}", report_id).into());
+    }
+
+    let response = WsFrame::from_bytes(&resp_data);
+    if response.cmd != WsCmd::GetBatteryLevel {
+        return Err(format!("Unexpected command in response: {:?}", response.cmd).into());
+    }
+    if response.data.len() != 2 {
+        return Err(format!(
+            "Unexpected data length in response: {}",
+            response.data.len()
+        )
+        .into());
+    }
+
+    let battery_level = response.data[0];
+    let charging_status = response.data[1] != 0;
+    Ok((battery_level, charging_status))
 }
