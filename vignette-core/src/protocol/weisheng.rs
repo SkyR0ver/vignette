@@ -123,7 +123,7 @@ impl WsCmd {
     /// Returns the expected length of the payload in the request frame.
     fn req_len(&self) -> usize {
         match self {
-            WsCmd::GetVersion => 24,
+            WsCmd::GetVersion | WsCmd::GetFunctionInfo => 24,
             WsCmd::GetBatteryLevel => 0,
             _ => 56,
         }
@@ -132,7 +132,7 @@ impl WsCmd {
     /// Returns the expected length of the payload in the response frame.
     fn resp_len(&self) -> u8 {
         match self {
-            WsCmd::GetVersion => 24,
+            WsCmd::GetVersion | WsCmd::GetFunctionInfo => 24,
             WsCmd::GetBatteryLevel => 2,
             _ => 56,
         }
@@ -142,6 +142,7 @@ impl WsCmd {
     fn resp_data_len(&self) -> usize {
         match self {
             WsCmd::GetVersion => 30,
+            WsCmd::GetFunctionInfo => 35,
             WsCmd::GetBatteryLevel => 2,
             _ => 56,
         }
@@ -192,4 +193,93 @@ pub async fn get_firmware_version(
     let version_high = version_data[29] as u16;
     let version_low = version_data[28] as u16;
     Ok((version_high << 8) | version_low)
+}
+
+#[binrw]
+#[brw(little)]
+#[derive(Debug)]
+pub struct FunctionInfo {
+    #[brw(pad_before = 1)]
+    pub light_mode: LightMode,
+    pub light_brightness: u8,
+    pub light_speed: u8,
+    #[br(try_map = u8::try_into)]
+    #[bw(try_map = |x| u8::try_from(*x))]
+    pub light_reverse: bool,
+    #[br(try_map = u8::try_into)]
+    #[bw(try_map = |x| u8::try_from(*x))]
+    pub rainbow_mode: bool,
+    pub static_color: [u8; 3],
+    pub color_index: u8,
+    pub custom_color: [u8; 3],
+    pub sleep_time: u16,
+    #[brw(pad_before = 3)]
+    pub color_trigger_mode: u8,
+    #[br(try_map = u8::try_into)]
+    #[bw(try_map = |x| u8::try_from(*x))]
+    pub swap_wasd: bool,
+    #[br(try_map = u8::try_into)]
+    #[bw(try_map = |x| u8::try_from(*x))]
+    pub all_key_punchless: bool,
+    #[br(try_map = u8::try_into)]
+    #[bw(try_map = |x| u8::try_from(*x))]
+    pub lock_win: bool,
+    pub polling_rate: PollingRate,
+    #[brw(pad_before = 4)]
+    #[br(try_map = u8::try_into)]
+    #[bw(try_map = |x| u8::try_from(*x))]
+    pub mac_mode: bool,
+    #[br(try_map = u8::try_into)]
+    #[bw(try_map = |x| u8::try_from(*x))]
+    pub enable_light: bool,
+    #[brw(pad_before = 4)]
+    #[br(try_map = u8::try_into)]
+    #[bw(try_map = |x| u8::try_from(*x))]
+    pub enable_smart_speed: bool,
+    pub enable_low_latency: u8,
+}
+
+#[binrw]
+#[brw(repr = u8)]
+#[derive(Debug)]
+pub enum LightMode {
+    Flow = 1,
+    Cloud,
+    Circuit,
+    Judgement,
+    Breath,
+    Steady,
+    Step,
+    Ripple,
+    Dash,
+    Surging,
+    Blossom,
+    Stripes,
+    Soaring,
+    Swirl,
+    Rain,
+    Tide,
+    Unity,
+    Passion,
+    Custom,
+    Off,
+}
+
+#[binrw]
+#[brw(repr = u8)]
+#[derive(Debug)]
+pub enum PollingRate {
+    Hz1000,
+    Hz500,
+    Hz250,
+    Hz125,
+}
+
+pub async fn get_function_info(
+    reader: &mut HidDevReader,
+    writer: &mut HidDevWriter,
+) -> ProtoResult<FunctionInfo> {
+    let info_data = execute(reader, writer, WsCmd::GetFunctionInfo, Some(&[0u8; 48])).await?;
+    let info = FunctionInfo::read(&mut Cursor::new(info_data))?;
+    Ok(info)
 }
