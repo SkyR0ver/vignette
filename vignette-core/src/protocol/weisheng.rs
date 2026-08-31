@@ -132,6 +132,7 @@ impl WsCmd {
     /// Returns the expected length of the payload in the response frame.
     fn resp_len(&self) -> u8 {
         match self {
+            WsCmd::GetVersion => 24,
             WsCmd::GetBatteryLevel => 2,
             _ => 56,
         }
