@@ -32,25 +32,26 @@ pub struct WsFrame {
 }
 
 impl WsFrame {
-    pub fn new(cmd: WsCmd, data: Option<&[u8]>) -> Self {
-        let data_len = data.map_or_default(|d| d.len());
-        let frame_len = cmd.req_len();
-        if data_len > frame_len {
-            panic!(
-                "Data fragmentation is not supported yet. Data length: {}, max length: {}",
-                data_len, frame_len
-            );
-        }
-
-        let mut frame_data = Vec::with_capacity(frame_len);
-        if let Some(data) = data {
-            frame_data.extend_from_slice(data);
-        }
-
-        WsFrame {
-            cmd,
-            offset: 0,
-            data: frame_data,
+    /// Creates a new frame with the given command and data. If the data is too
+    /// long, it will be fragmented into multiple frames.
+    pub fn new(cmd: WsCmd, data: Option<&[u8]>) -> Vec<Self> {
+        match data {
+            Some(data) => {
+                let frame_len = cmd.req_len();
+                data.chunks(frame_len)
+                    .enumerate()
+                    .map(|(i, chunk)| WsFrame {
+                        cmd: cmd,
+                        offset: (i * frame_len) as u16,
+                        data: chunk.to_vec(),
+                    })
+                    .collect()
+            }
+            None => vec![WsFrame {
+                cmd: cmd,
+                offset: 0,
+                data: Vec::new(),
+            }],
         }
     }
 
@@ -83,7 +84,7 @@ async fn recv(reader: &mut HidDevReader) -> ProtoResult<WsFrame> {
 
 /// Command code in the weisheng protocol.
 #[binrw]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum WsCmd {
     #[brw(magic(1u8))]
     StartQuickComm,
@@ -140,7 +141,9 @@ pub async fn get_battery_level(
     writer: &mut HidDevWriter,
 ) -> ProtoResult<(u8, bool)> {
     let request = WsFrame::new(WsCmd::GetBatteryLevel, None);
-    send(writer, &request).await?;
+    for frame in request {
+        send(writer, &frame).await?;
+    }
 
     let response = recv(reader).await?;
     if response.cmd != WsCmd::GetBatteryLevel {
