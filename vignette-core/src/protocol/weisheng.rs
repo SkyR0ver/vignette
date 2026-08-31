@@ -1,4 +1,4 @@
-use std::io::Cursor;
+use std::{cmp::min, io::Cursor};
 
 use binrw::{BinRead, BinWrite, binrw};
 
@@ -120,6 +120,7 @@ pub enum WsCmd {
 }
 
 impl WsCmd {
+    /// Returns the expected length of the payload in the request frame.
     fn req_len(&self) -> usize {
         match self {
             WsCmd::GetVersion => 24,
@@ -135,24 +136,50 @@ impl WsCmd {
             _ => 56,
         }
     }
+
+    /// Returns the expected length of complete response data for the command.
+    fn resp_data_len(&self) -> usize {
+        match self {
+            WsCmd::GetVersion => 30,
+            WsCmd::GetBatteryLevel => 2,
+            _ => 56,
+        }
+    }
+}
+
+async fn execute(
+    reader: &mut HidDevReader,
+    writer: &mut HidDevWriter,
+    cmd: WsCmd,
+    data: Option<&[u8]>,
+) -> ProtoResult<Vec<u8>> {
+    let data_len = cmd.resp_data_len();
+
+    let requests = WsFrame::new(cmd, data);
+    let mut resp_data = vec![0u8; data_len];
+
+    for frame in &requests {
+        send(writer, frame).await?;
+        let response = recv(reader).await?;
+        if response.cmd != cmd {
+            return Err(ProtoError::ResponseMismatch);
+        }
+
+        let start = response.offset as usize;
+        let end = min(data_len, start + response.data.len());
+        resp_data[start..end].copy_from_slice(&response.data[..(end - start)]);
+    }
+
+    Ok(resp_data)
 }
 
 pub async fn get_battery_level(
     reader: &mut HidDevReader,
     writer: &mut HidDevWriter,
 ) -> ProtoResult<(u8, bool)> {
-    let request = WsFrame::new(WsCmd::GetBatteryLevel, None);
-    for frame in request {
-        send(writer, &frame).await?;
-    }
-
-    let response = recv(reader).await?;
-    if response.cmd != WsCmd::GetBatteryLevel {
-        return Err(ProtoError::ResponseMismatch);
-    }
-
-    let battery_level = response.data[0];
-    let charging_status = response.data[1] != 0;
+    let battery_data = execute(reader, writer, WsCmd::GetBatteryLevel, None).await?;
+    let battery_level = battery_data[0];
+    let charging_status = battery_data[1] != 0;
     Ok((battery_level, charging_status))
 }
 
@@ -160,22 +187,8 @@ pub async fn get_firmware_version(
     reader: &mut HidDevReader,
     writer: &mut HidDevWriter,
 ) -> ProtoResult<u16> {
-    let data = [0u8; 30];
-    let request = WsFrame::new(WsCmd::GetVersion, Some(&data));
-
-    let mut response: Vec<WsFrame> = Vec::new();
-    for frame in request {
-        send(writer, &frame).await?;
-        let resp = recv(reader).await?;
-        if resp.cmd != WsCmd::GetVersion {
-            return Err(ProtoError::ResponseMismatch);
-        }
-        response.push(resp);
-    }
-
-    let version_data = &response[response.len() - 1].data;
-    let version_high = version_data[5] as u16;
-    let version_low = version_data[4] as u16;
-
+    let version_data = execute(reader, writer, WsCmd::GetVersion, Some(&[0u8; 30])).await?;
+    let version_high = version_data[29] as u16;
+    let version_low = version_data[28] as u16;
     Ok((version_high << 8) | version_low)
 }
