@@ -2,7 +2,10 @@ use std::io::Cursor;
 
 use binrw::{BinRead, BinWrite, binrw};
 
-use crate::error::{BinResult, ProtoError, ProtoResult};
+use crate::{
+    error::{BinResult, HidResult, ProtoError, ProtoResult},
+    hid::{HidDevReader, HidDevWriter},
+};
 
 pub const WS_REPORT_ID: u8 = 4;
 
@@ -64,6 +67,20 @@ impl WsFrame {
     }
 }
 
+async fn send(writer: &mut HidDevWriter, request: &WsFrame) -> HidResult<()> {
+    let req_data = request.to_bytes();
+    writer.write_output_report(WS_REPORT_ID, &req_data).await
+}
+
+async fn recv(reader: &mut HidDevReader) -> ProtoResult<WsFrame> {
+    let (report_id, resp_data) = reader.read_input_report().await?;
+    if report_id != WS_REPORT_ID {
+        return Err(ProtoError::InvalidReportId(report_id));
+    }
+    let response = WsFrame::from_bytes(&resp_data)?;
+    Ok(response)
+}
+
 /// Command code in the weisheng protocol.
 #[binrw]
 #[derive(Debug, PartialEq, Eq)]
@@ -119,21 +136,13 @@ impl WsCmd {
 }
 
 pub async fn get_battery_level(
-    reader: &mut crate::hid::HidDevReader,
-    writer: &mut crate::hid::HidDevWriter,
+    reader: &mut HidDevReader,
+    writer: &mut HidDevWriter,
 ) -> ProtoResult<(u8, bool)> {
-    // Send the request
     let request = WsFrame::new(WsCmd::GetBatteryLevel, None);
-    let req_data = request.to_bytes();
-    writer.write_output_report(WS_REPORT_ID, &req_data).await?;
+    send(writer, &request).await?;
 
-    // Read the response
-    let (report_id, resp_data) = reader.read_input_report().await?;
-    if report_id != WS_REPORT_ID {
-        return Err(ProtoError::InvalidReportId(report_id));
-    }
-
-    let response = WsFrame::from_bytes(&resp_data)?;
+    let response = recv(reader).await?;
     if response.cmd != WsCmd::GetBatteryLevel {
         return Err(ProtoError::ResponseMismatch);
     }
