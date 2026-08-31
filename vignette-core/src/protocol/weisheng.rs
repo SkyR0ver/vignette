@@ -122,6 +122,7 @@ pub enum WsCmd {
 impl WsCmd {
     fn req_len(&self) -> usize {
         match self {
+            WsCmd::GetVersion => 24,
             WsCmd::GetBatteryLevel => 0,
             _ => 56,
         }
@@ -153,4 +154,28 @@ pub async fn get_battery_level(
     let battery_level = response.data[0];
     let charging_status = response.data[1] != 0;
     Ok((battery_level, charging_status))
+}
+
+pub async fn get_firmware_version(
+    reader: &mut HidDevReader,
+    writer: &mut HidDevWriter,
+) -> ProtoResult<u16> {
+    let data = [0u8; 30];
+    let request = WsFrame::new(WsCmd::GetVersion, Some(&data));
+
+    let mut response: Vec<WsFrame> = Vec::new();
+    for frame in request {
+        send(writer, &frame).await?;
+        let resp = recv(reader).await?;
+        if resp.cmd != WsCmd::GetVersion {
+            return Err(ProtoError::ResponseMismatch);
+        }
+        response.push(resp);
+    }
+
+    let version_data = &response[response.len() - 1].data;
+    let version_high = version_data[5] as u16;
+    let version_low = version_data[4] as u16;
+
+    Ok((version_high << 8) | version_low)
 }

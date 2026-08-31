@@ -6,7 +6,7 @@ mod protocol;
 use crate::error::HidResult;
 use crate::hid::{HidDevInfo, HidDevReaderWriter};
 
-pub use protocol::weisheng::get_battery_level;
+pub use protocol::weisheng::{get_battery_level, get_firmware_version};
 
 pub async fn get_all() -> HidResult<Vec<HidDevInfo>> {
     hid::get_all().await
