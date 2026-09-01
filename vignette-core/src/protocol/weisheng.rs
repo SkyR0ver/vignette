@@ -50,13 +50,21 @@ impl WsFrame {
                     data: chunk.to_vec(),
                 })
                 .collect(),
-            None => (0..cmd.data_len().div_ceil(frame_len))
-                .map(|i| WsFrame {
-                    cmd: cmd,
-                    offset: (i * frame_len) as u16,
-                    data: vec![0u8; frame_len],
-                })
-                .collect(),
+            None => {
+                let data_len = cmd.data_len();
+                let num_frames = if data_len == 0 {
+                    1
+                } else {
+                    data_len.div_ceil(frame_len)
+                };
+                (0..num_frames)
+                    .map(|i| WsFrame {
+                        cmd: cmd,
+                        offset: (i * frame_len) as u16,
+                        data: vec![0u8; frame_len],
+                    })
+                    .collect()
+            }
         }
     }
 
