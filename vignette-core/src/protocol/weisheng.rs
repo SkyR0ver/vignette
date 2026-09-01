@@ -34,24 +34,28 @@ pub struct WsFrame {
 impl WsFrame {
     /// Creates a new frame with the given command and data. If the data is too
     /// long, it will be fragmented into multiple frames.
+    ///
+    /// Passing `None` as data will create frames with zeroed payloads, as if
+    /// a slice of the expected data length for the command was given.
     pub fn new(cmd: WsCmd, data: Option<&[u8]>) -> Vec<Self> {
+        let frame_len = cmd.payload_len();
         match data {
-            Some(data) => {
-                let frame_len = cmd.payload_len();
-                data.chunks(frame_len)
-                    .enumerate()
-                    .map(|(i, chunk)| WsFrame {
-                        cmd: cmd,
-                        offset: (i * frame_len) as u16,
-                        data: chunk.to_vec(),
-                    })
-                    .collect()
-            }
-            None => vec![WsFrame {
-                cmd: cmd,
-                offset: 0,
-                data: Vec::new(),
-            }],
+            Some(data) => data
+                .chunks(frame_len)
+                .enumerate()
+                .map(|(i, chunk)| WsFrame {
+                    cmd: cmd,
+                    offset: (i * frame_len) as u16,
+                    data: chunk.to_vec(),
+                })
+                .collect(),
+            None => (0..cmd.data_len().div_ceil(frame_len))
+                .map(|i| WsFrame {
+                    cmd: cmd,
+                    offset: (i * frame_len) as u16,
+                    data: vec![0u8; frame_len],
+                })
+                .collect(),
         }
     }
 
@@ -180,7 +184,7 @@ pub async fn get_firmware_version(
     reader: &mut HidDevReader,
     writer: &mut HidDevWriter,
 ) -> ProtoResult<u16> {
-    let version_data = execute(reader, writer, WsCmd::GetVersion, Some(&[0u8; 30])).await?;
+    let version_data = execute(reader, writer, WsCmd::GetVersion, None).await?;
     let version_high = version_data[29] as u16;
     let version_low = version_data[28] as u16;
     Ok((version_high << 8) | version_low)
@@ -270,7 +274,7 @@ pub async fn get_function_info(
     reader: &mut HidDevReader,
     writer: &mut HidDevWriter,
 ) -> ProtoResult<FunctionInfo> {
-    let info_data = execute(reader, writer, WsCmd::GetFunctionInfo, Some(&[0u8; 48])).await?;
+    let info_data = execute(reader, writer, WsCmd::GetFunctionInfo, None).await?;
     let info = FunctionInfo::read(&mut Cursor::new(info_data))?;
     Ok(info)
 }
