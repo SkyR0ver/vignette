@@ -20,7 +20,7 @@ pub struct WsFrame {
     /// Command code
     cmd: WsCmd,
     /// Length of the payload
-    #[br(calc = cmd.resp_len(), pad_after = 1)]
+    #[br(try_calc = cmd.payload_len().try_into(), pad_after = 1)]
     #[bw(try_calc = u8::try_from(data.len()))]
     len: u8,
     /// Offset of the payload if fragmented
@@ -37,7 +37,7 @@ impl WsFrame {
     pub fn new(cmd: WsCmd, data: Option<&[u8]>) -> Vec<Self> {
         match data {
             Some(data) => {
-                let frame_len = cmd.req_len();
+                let frame_len = cmd.payload_len();
                 data.chunks(frame_len)
                     .enumerate()
                     .map(|(i, chunk)| WsFrame {
@@ -120,17 +120,8 @@ pub enum WsCmd {
 }
 
 impl WsCmd {
-    /// Returns the expected length of the payload in the request frame.
-    fn req_len(&self) -> usize {
-        match self {
-            WsCmd::GetVersion | WsCmd::GetFunctionInfo => 24,
-            WsCmd::GetBatteryLevel => 0,
-            _ => 56,
-        }
-    }
-
-    /// Returns the expected length of the payload in the response frame.
-    fn resp_len(&self) -> u8 {
+    /// Returns the expected length of the payload in frames for the command.
+    fn payload_len(&self) -> usize {
         match self {
             WsCmd::GetVersion | WsCmd::GetFunctionInfo => 24,
             WsCmd::GetBatteryLevel => 2,
@@ -138,8 +129,8 @@ impl WsCmd {
         }
     }
 
-    /// Returns the expected length of complete response data for the command.
-    fn resp_data_len(&self) -> usize {
+    /// Returns the expected length of complete data for the command.
+    fn data_len(&self) -> usize {
         match self {
             WsCmd::GetVersion => 30,
             WsCmd::GetFunctionInfo => 35,
@@ -155,7 +146,7 @@ async fn execute(
     cmd: WsCmd,
     data: Option<&[u8]>,
 ) -> ProtoResult<Vec<u8>> {
-    let data_len = cmd.resp_data_len();
+    let data_len = cmd.data_len();
 
     let requests = WsFrame::new(cmd, data);
     let mut resp_data = vec![0u8; data_len];
