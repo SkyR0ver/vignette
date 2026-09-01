@@ -3,7 +3,7 @@ use std::{cmp::min, io::Cursor};
 use binrw::{BinRead, BinWrite, binrw};
 
 use crate::{
-    error::{BinResult, HidResult, ProtoError, ProtoResult},
+    error::{BinResult, ProtoError, ProtoResult},
     hid::{HidDevReader, HidDevWriter},
 };
 
@@ -64,17 +64,17 @@ impl WsFrame {
         WsFrame::read(&mut cursor)
     }
 
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> BinResult<Vec<u8>> {
         let mut buf = Cursor::new(Vec::with_capacity(64));
-        self.write(&mut buf)
-            .expect("Failed to write WsFrame to bytes");
-        buf.into_inner()
+        self.write(&mut buf)?;
+        Ok(buf.into_inner())
     }
 }
 
-async fn send(writer: &mut HidDevWriter, request: &WsFrame) -> HidResult<()> {
-    let req_data = request.to_bytes();
-    writer.write_output_report(WS_REPORT_ID, &req_data).await
+async fn send(writer: &mut HidDevWriter, request: &WsFrame) -> ProtoResult<()> {
+    let req_data = request.to_bytes()?;
+    writer.write_output_report(WS_REPORT_ID, &req_data).await?;
+    Ok(())
 }
 
 async fn recv(reader: &mut HidDevReader) -> ProtoResult<WsFrame> {
