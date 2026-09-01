@@ -224,7 +224,9 @@ pub struct FunctionInfo {
     pub color_index: u8,
     pub custom_color: [u8; 3],
     pub sleep_time: u16,
-    #[brw(pad_before = 3)]
+    reserved15: u8,
+    reserved16: u8,
+    reserved17: u8,
     pub color_trigger_mode: u8,
     #[br(map = util::bool_parser)]
     #[bw(map = util::bool_writer)]
@@ -236,14 +238,20 @@ pub struct FunctionInfo {
     #[bw(map = util::bool_writer)]
     pub lock_win: bool,
     pub polling_rate: PollingRate,
-    #[brw(pad_before = 4)]
+    reserved23: u8,
+    reserved24: u8,
+    reserved25: u8,
+    reserved26: u8,
     #[br(map = util::bool_parser)]
     #[bw(map = util::bool_writer)]
     pub mac_mode: bool,
     #[br(map = util::bool_parser)]
     #[bw(map = util::bool_writer)]
     pub enable_light: bool,
-    #[brw(pad_before = 4)]
+    reserved29: u8,
+    reserved30: u8,
+    reserved31: u8,
+    reserved32: u8,
     #[br(map = util::bool_parser)]
     #[bw(map = util::bool_writer)]
     pub enable_smart_speed: bool,
