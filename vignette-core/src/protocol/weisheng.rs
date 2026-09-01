@@ -128,7 +128,7 @@ impl WsCmd {
     /// Returns the expected length of the payload in frames for the command.
     fn payload_len(&self) -> usize {
         match self {
-            WsCmd::GetVersion | WsCmd::GetFunctionInfo => 24,
+            WsCmd::GetVersion | WsCmd::GetFunctionInfo | WsCmd::SetFunctionInfo => 24,
             WsCmd::GetBatteryLevel => 2,
             _ => 56,
         }
@@ -138,7 +138,7 @@ impl WsCmd {
     fn data_len(&self) -> usize {
         match self {
             WsCmd::GetVersion => 30,
-            WsCmd::GetFunctionInfo => 35,
+            WsCmd::GetFunctionInfo | WsCmd::SetFunctionInfo => 35,
             WsCmd::GetBatteryLevel => 2,
             _ => 56,
         }
@@ -278,4 +278,21 @@ pub async fn get_function_info(
     let info_data = execute(reader, writer, WsCmd::GetFunctionInfo, None).await?;
     let info = FunctionInfo::read(&mut Cursor::new(info_data))?;
     Ok(info)
+}
+
+pub async fn set_function_info(
+    reader: &mut HidDevReader,
+    writer: &mut HidDevWriter,
+    info: &FunctionInfo,
+) -> ProtoResult<()> {
+    let mut info_data = Cursor::new(Vec::with_capacity(WsCmd::SetFunctionInfo.data_len()));
+    info.write(&mut info_data)?;
+    let _ = execute(
+        reader,
+        writer,
+        WsCmd::SetFunctionInfo,
+        Some(info_data.get_ref()),
+    )
+    .await?;
+    Ok(())
 }
