@@ -138,6 +138,7 @@ impl WsCmd {
         match self {
             WsCmd::GetVersion | WsCmd::GetFunctionInfo | WsCmd::SetFunctionInfo => 24,
             WsCmd::GetBatteryLevel => 2,
+            WsCmd::ResetSettings => 0,
             _ => 56,
         }
     }
@@ -148,6 +149,7 @@ impl WsCmd {
             WsCmd::GetVersion => 30,
             WsCmd::GetFunctionInfo | WsCmd::SetFunctionInfo => 35,
             WsCmd::GetBatteryLevel => 2,
+            WsCmd::ResetSettings => 0,
             _ => 56,
         }
     }
@@ -197,6 +199,11 @@ pub async fn get_firmware_version(
     let version_high = version_data[29] as u16;
     let version_low = version_data[28] as u16;
     Ok((version_high << 8) | version_low)
+}
+
+pub async fn reset(reader: &mut HidDevReader, writer: &mut HidDevWriter) -> ProtoResult<()> {
+    execute(reader, writer, WsCmd::ResetSettings, None).await?;
+    Ok(())
 }
 
 #[binrw]
