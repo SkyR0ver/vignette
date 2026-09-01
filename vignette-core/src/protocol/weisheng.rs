@@ -5,6 +5,7 @@ use binrw::{BinRead, BinWrite, binrw};
 use crate::{
     error::{BinResult, ProtoError, ProtoResult},
     hid::{HidDevReader, HidDevWriter},
+    util,
 };
 
 pub const WS_REPORT_ID: u8 = 4;
@@ -198,11 +199,11 @@ pub struct FunctionInfo {
     pub light_mode: LightMode,
     pub light_brightness: u8,
     pub light_speed: u8,
-    #[br(try_map = u8::try_into)]
-    #[bw(try_map = |x| u8::try_from(*x))]
+    #[br(map = util::bool_parser)]
+    #[bw(map = util::bool_writer)]
     pub light_reverse: bool,
-    #[br(try_map = u8::try_into)]
-    #[bw(try_map = |x| u8::try_from(*x))]
+    #[br(map = util::bool_parser)]
+    #[bw(map = util::bool_writer)]
     pub rainbow_mode: bool,
     pub static_color: [u8; 3],
     pub color_index: u8,
@@ -210,26 +211,26 @@ pub struct FunctionInfo {
     pub sleep_time: u16,
     #[brw(pad_before = 3)]
     pub color_trigger_mode: u8,
-    #[br(try_map = u8::try_into)]
-    #[bw(try_map = |x| u8::try_from(*x))]
+    #[br(map = util::bool_parser)]
+    #[bw(map = util::bool_writer)]
     pub swap_wasd: bool,
-    #[br(try_map = u8::try_into)]
-    #[bw(try_map = |x| u8::try_from(*x))]
+    #[br(map = util::bool_parser)]
+    #[bw(map = util::bool_writer)]
     pub all_key_punchless: bool,
-    #[br(try_map = u8::try_into)]
-    #[bw(try_map = |x| u8::try_from(*x))]
+    #[br(map = util::bool_parser)]
+    #[bw(map = util::bool_writer)]
     pub lock_win: bool,
     pub polling_rate: PollingRate,
     #[brw(pad_before = 4)]
-    #[br(try_map = u8::try_into)]
-    #[bw(try_map = |x| u8::try_from(*x))]
+    #[br(map = util::bool_parser)]
+    #[bw(map = util::bool_writer)]
     pub mac_mode: bool,
-    #[br(try_map = u8::try_into)]
-    #[bw(try_map = |x| u8::try_from(*x))]
+    #[br(map = util::bool_parser)]
+    #[bw(map = util::bool_writer)]
     pub enable_light: bool,
     #[brw(pad_before = 4)]
-    #[br(try_map = u8::try_into)]
-    #[bw(try_map = |x| u8::try_from(*x))]
+    #[br(map = util::bool_parser)]
+    #[bw(map = util::bool_writer)]
     pub enable_smart_speed: bool,
     pub enable_low_latency: u8,
 }

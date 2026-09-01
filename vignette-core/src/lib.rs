@@ -2,6 +2,7 @@ mod error;
 mod hid;
 mod model;
 mod protocol;
+mod util;
 
 use crate::error::HidResult;
 use crate::hid::{HidDevInfo, HidDevReaderWriter};
