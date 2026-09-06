@@ -12,4 +12,5 @@ async-hid = { version = "0.5.3", default-features = false, features = ["tokio", 
 async-trait = "0.1.92"
 binrw = "0.15.2"
 futures = "0.3.34"
+thiserror = "2"
 tokio = { workspace = true }
