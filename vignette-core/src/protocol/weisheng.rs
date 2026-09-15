@@ -181,11 +181,21 @@ async fn execute(
     Ok(resp_data)
 }
 
-pub async fn get_battery_level(rw: &mut HidDevReaderWriter) -> ProtoResult<(u8, bool)> {
+async fn get_battery_status(rw: &mut HidDevReaderWriter) -> ProtoResult<(u8, bool)> {
     let battery_data = execute(rw, WsCmd::GetBatteryLevel, None).await?;
     let battery_level = battery_data[0];
     let charging_status = battery_data[1] != 0;
     Ok((battery_level, charging_status))
+}
+
+pub async fn get_battery_level(rw: &mut HidDevReaderWriter) -> ProtoResult<u8> {
+    let (level, _) = get_battery_status(rw).await?;
+    Ok(level)
+}
+
+pub async fn get_charging_status(rw: &mut HidDevReaderWriter) -> ProtoResult<bool> {
+    let (_, charging) = get_battery_status(rw).await?;
+    Ok(charging)
 }
 
 pub async fn get_firmware_version(rw: &mut HidDevReaderWriter) -> ProtoResult<u16> {

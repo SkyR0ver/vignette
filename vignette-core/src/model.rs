@@ -80,18 +80,14 @@ impl Keyboard {
     pub async fn get_battery_level(&self) -> ProtoResult<u8> {
         let mut rw = self.open().await?;
         match self.protocol {
-            ProtoName::Weisheng => weisheng::get_battery_level(&mut rw)
-                .await
-                .map(|(level, _charging)| level),
+            ProtoName::Weisheng => weisheng::get_battery_level(&mut rw).await,
         }
     }
 
     pub async fn get_charging_status(&self) -> ProtoResult<bool> {
         let mut rw = self.open().await?;
         match self.protocol {
-            ProtoName::Weisheng => weisheng::get_battery_level(&mut rw)
-                .await
-                .map(|(_level, charging)| charging),
+            ProtoName::Weisheng => weisheng::get_charging_status(&mut rw).await,
         }
     }
 
