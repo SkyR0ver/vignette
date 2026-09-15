@@ -1,4 +1,7 @@
-use std::{cmp::min, io::Cursor};
+use std::{
+    cmp::{max, min},
+    io::Cursor,
+};
 
 use binrw::{BinRead, BinWrite, binrw};
 
@@ -298,18 +301,159 @@ pub enum PollingRate {
     Hz125,
 }
 
-pub async fn get_function_info(rw: &mut HidDevReaderWriter) -> ProtoResult<FunctionInfo> {
+async fn get_function_info(rw: &mut HidDevReaderWriter) -> ProtoResult<FunctionInfo> {
     let info_data = execute(rw, WsCmd::GetFunctionInfo, None).await?;
     let info = FunctionInfo::read(&mut Cursor::new(info_data))?;
     Ok(info)
 }
 
-pub async fn set_function_info(
-    rw: &mut HidDevReaderWriter,
-    info: &FunctionInfo,
-) -> ProtoResult<()> {
+async fn set_function_info(rw: &mut HidDevReaderWriter, info: &FunctionInfo) -> ProtoResult<()> {
     let mut info_data = Cursor::new(Vec::with_capacity(WsCmd::SetFunctionInfo.data_len()));
     info.write(&mut info_data)?;
     let _ = execute(rw, WsCmd::SetFunctionInfo, Some(info_data.get_ref())).await?;
+    Ok(())
+}
+
+pub async fn get_light_mode(rw: &mut HidDevReaderWriter) -> ProtoResult<LightMode> {
+    let info = get_function_info(rw).await?;
+    Ok(info.light_mode)
+}
+
+pub async fn set_light_mode(rw: &mut HidDevReaderWriter, mode: LightMode) -> ProtoResult<()> {
+    let mut info = get_function_info(rw).await?;
+    info.light_mode = mode;
+    set_function_info(rw, &info).await?;
+    Ok(())
+}
+
+pub async fn get_light_brightness(rw: &mut HidDevReaderWriter) -> ProtoResult<u8> {
+    let info = get_function_info(rw).await?;
+    Ok(info.light_brightness)
+}
+
+pub async fn set_light_brightness(rw: &mut HidDevReaderWriter, brightness: u8) -> ProtoResult<()> {
+    let mut info = get_function_info(rw).await?;
+    info.light_brightness = max(4, brightness);
+    set_function_info(rw, &info).await?;
+    Ok(())
+}
+
+pub async fn get_light_speed(rw: &mut HidDevReaderWriter) -> ProtoResult<u8> {
+    let info = get_function_info(rw).await?;
+    Ok(info.light_speed)
+}
+
+pub async fn set_light_speed(rw: &mut HidDevReaderWriter, speed: u8) -> ProtoResult<()> {
+    let mut info = get_function_info(rw).await?;
+    info.light_speed = max(4, speed);
+    set_function_info(rw, &info).await?;
+    Ok(())
+}
+
+pub async fn get_light_reverse(rw: &mut HidDevReaderWriter) -> ProtoResult<bool> {
+    let info = get_function_info(rw).await?;
+    Ok(info.light_reverse)
+}
+
+pub async fn set_light_reverse(rw: &mut HidDevReaderWriter, reverse: bool) -> ProtoResult<()> {
+    let mut info = get_function_info(rw).await?;
+    info.light_reverse = reverse;
+    set_function_info(rw, &info).await?;
+    Ok(())
+}
+
+pub async fn get_rainbow_mode(rw: &mut HidDevReaderWriter) -> ProtoResult<bool> {
+    let info = get_function_info(rw).await?;
+    Ok(info.rainbow_mode)
+}
+
+pub async fn set_rainbow_mode(rw: &mut HidDevReaderWriter, rainbow: bool) -> ProtoResult<()> {
+    let mut info = get_function_info(rw).await?;
+    info.rainbow_mode = rainbow;
+    set_function_info(rw, &info).await?;
+    Ok(())
+}
+
+pub async fn get_sleep_time(rw: &mut HidDevReaderWriter) -> ProtoResult<u16> {
+    let info = get_function_info(rw).await?;
+    Ok(info.sleep_time)
+}
+
+pub async fn set_sleep_time(rw: &mut HidDevReaderWriter, sleep_time: u16) -> ProtoResult<()> {
+    let mut info = get_function_info(rw).await?;
+    info.sleep_time = sleep_time;
+    set_function_info(rw, &info).await?;
+    Ok(())
+}
+
+pub async fn get_swap_wasd(rw: &mut HidDevReaderWriter) -> ProtoResult<bool> {
+    let info = get_function_info(rw).await?;
+    Ok(info.swap_wasd)
+}
+
+pub async fn set_swap_wasd(rw: &mut HidDevReaderWriter, swap: bool) -> ProtoResult<()> {
+    let mut info = get_function_info(rw).await?;
+    info.swap_wasd = swap;
+    set_function_info(rw, &info).await?;
+    Ok(())
+}
+
+pub async fn get_all_key_punchless(rw: &mut HidDevReaderWriter) -> ProtoResult<bool> {
+    let info = get_function_info(rw).await?;
+    Ok(info.all_key_punchless)
+}
+
+pub async fn set_all_key_punchless(rw: &mut HidDevReaderWriter, punchless: bool) -> ProtoResult<()> {
+    let mut info = get_function_info(rw).await?;
+    info.all_key_punchless = punchless;
+    set_function_info(rw, &info).await?;
+    Ok(())
+}
+
+pub async fn get_lock_win(rw: &mut HidDevReaderWriter) -> ProtoResult<bool> {
+    let info = get_function_info(rw).await?;
+    Ok(info.lock_win)
+}
+
+pub async fn set_lock_win(rw: &mut HidDevReaderWriter, lock: bool) -> ProtoResult<()> {
+    let mut info = get_function_info(rw).await?;
+    info.lock_win = lock;
+    set_function_info(rw, &info).await?;
+    Ok(())
+}
+
+pub async fn get_polling_rate(rw: &mut HidDevReaderWriter) -> ProtoResult<PollingRate> {
+    let info = get_function_info(rw).await?;
+    Ok(info.polling_rate)
+}
+
+pub async fn set_polling_rate(rw: &mut HidDevReaderWriter, rate: PollingRate) -> ProtoResult<()> {
+    let mut info = get_function_info(rw).await?;
+    info.polling_rate = rate;
+    set_function_info(rw, &info).await?;
+    Ok(())
+}
+
+pub async fn get_mac_mode(rw: &mut HidDevReaderWriter) -> ProtoResult<bool> {
+    let info = get_function_info(rw).await?;
+    Ok(info.mac_mode)
+}
+
+pub async fn set_mac_mode(rw: &mut HidDevReaderWriter, mac_mode: bool) -> ProtoResult<()> {
+    let mut info = get_function_info(rw).await?;
+    info.mac_mode = mac_mode;
+    set_function_info(rw, &info).await?;
+    Ok(())
+}
+
+pub async fn get_smart_speed(rw: &mut HidDevReaderWriter) -> ProtoResult<bool> {
+    let info = get_function_info(rw).await?;
+    Ok(info.enable_smart_speed)
+}
+
+pub async fn set_smart_speed(rw: &mut HidDevReaderWriter, smart_speed: bool) -> ProtoResult<()> {
+    let mut info = get_function_info(rw).await?;
+    info.enable_smart_speed = smart_speed;
+    set_function_info(rw, &info).await?;
     Ok(())
 }
