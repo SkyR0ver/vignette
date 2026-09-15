@@ -3,7 +3,7 @@ use futures::StreamExt;
 
 use crate::error::{HidError, HidResult};
 
-type HidDevice = async_hid::Device;
+pub type HidDevice = async_hid::Device;
 pub type HidDevInfo = async_hid::DeviceInfo;
 
 pub struct HidDevReader(async_hid::DeviceReader);
@@ -19,6 +19,12 @@ impl HidDevReader {
     }
 }
 
+impl From<async_hid::DeviceReader> for HidDevReader {
+    fn from(value: async_hid::DeviceReader) -> Self {
+        HidDevReader(value)
+    }
+}
+
 pub struct HidDevWriter(async_hid::DeviceWriter);
 
 impl HidDevWriter {
@@ -28,6 +34,12 @@ impl HidDevWriter {
         buf.extend_from_slice(data);
         self.0.write_output_report(&buf).await?;
         Ok(())
+    }
+}
+
+impl From<async_hid::DeviceWriter> for HidDevWriter {
+    fn from(value: async_hid::DeviceWriter) -> Self {
+        HidDevWriter(value)
     }
 }
 
@@ -43,12 +55,10 @@ pub async fn get_all() -> HidResult<Vec<HidDevInfo>> {
     Ok(out)
 }
 
-pub async fn open(devinfo: &HidDevInfo) -> HidResult<HidDevReaderWriter> {
-    let device = async_hid::HidBackend::default()
+pub async fn find_device(devinfo: &HidDevInfo) -> HidResult<HidDevice> {
+    async_hid::HidBackend::default()
         .query_devices(&devinfo.id)
         .await?
         .next()
-        .ok_or(HidError::NotConnected)?;
-    let (reader, writer) = device.open().await?;
-    Ok((HidDevReader(reader), HidDevWriter(writer)))
+        .ok_or(HidError::NotConnected)
 }

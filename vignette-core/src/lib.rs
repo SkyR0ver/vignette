@@ -4,12 +4,9 @@ mod model;
 mod protocol;
 mod util;
 
-use crate::error::HidResult;
-use crate::hid::{HidDevInfo, HidDevReaderWriter};
-
-pub use protocol::weisheng::{
-    get_battery_level, get_firmware_version, get_function_info, reset, set_function_info,
-};
+use crate::error::{HidResult, ProtoResult};
+use crate::hid::HidDevInfo;
+use crate::model::Keyboard;
 
 pub async fn get_all() -> HidResult<Vec<HidDevInfo>> {
     hid::get_all().await
@@ -24,6 +21,7 @@ pub async fn get() -> HidResult<Vec<HidDevInfo>> {
     Ok(supported_devices)
 }
 
-pub async fn open(dev: &HidDevInfo) -> HidResult<HidDevReaderWriter> {
-    hid::open(dev).await
+pub async fn open(info: &HidDevInfo) -> ProtoResult<Keyboard> {
+    let dev = hid::find_device(info).await?;
+    Ok(Keyboard::new(dev, info.clone())?)
 }
