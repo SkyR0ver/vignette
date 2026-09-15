@@ -16,7 +16,7 @@ pub async fn get() -> HidResult<Vec<HidDevInfo>> {
     let supported_devices = get_all()
         .await?
         .into_iter()
-        .filter(model::is_supported)
+        .filter(protocol::is_supported)
         .collect();
     Ok(supported_devices)
 }
