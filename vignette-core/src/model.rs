@@ -102,4 +102,11 @@ impl Keyboard {
             ProtoName::Weisheng => weisheng::get_firmware_version(&mut reader, &mut writer).await,
         }
     }
+
+    pub async fn reset(&self) -> ProtoResult<()> {
+        let (mut reader, mut writer) = self.open().await?;
+        match self.protocol {
+            ProtoName::Weisheng => weisheng::reset(&mut reader, &mut writer).await,
+        }
+    }
 }
