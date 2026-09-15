@@ -4,7 +4,7 @@ use binrw::{BinRead, BinWrite, binrw};
 
 use crate::{
     error::{BinResult, ProtoError, ProtoResult},
-    hid::{HidDevReader, HidDevWriter},
+    hid::{HidDevReader, HidDevReaderWriter, HidDevWriter},
     util,
 };
 
@@ -156,11 +156,11 @@ impl WsCmd {
 }
 
 async fn execute(
-    reader: &mut HidDevReader,
-    writer: &mut HidDevWriter,
+    rw: &mut HidDevReaderWriter,
     cmd: WsCmd,
     data: Option<&[u8]>,
 ) -> ProtoResult<Vec<u8>> {
+    let (reader, writer) = rw;
     let data_len = cmd.data_len();
 
     let requests = WsFrame::new(cmd, data);
@@ -181,28 +181,22 @@ async fn execute(
     Ok(resp_data)
 }
 
-pub async fn get_battery_level(
-    reader: &mut HidDevReader,
-    writer: &mut HidDevWriter,
-) -> ProtoResult<(u8, bool)> {
-    let battery_data = execute(reader, writer, WsCmd::GetBatteryLevel, None).await?;
+pub async fn get_battery_level(rw: &mut HidDevReaderWriter) -> ProtoResult<(u8, bool)> {
+    let battery_data = execute(rw, WsCmd::GetBatteryLevel, None).await?;
     let battery_level = battery_data[0];
     let charging_status = battery_data[1] != 0;
     Ok((battery_level, charging_status))
 }
 
-pub async fn get_firmware_version(
-    reader: &mut HidDevReader,
-    writer: &mut HidDevWriter,
-) -> ProtoResult<u16> {
-    let version_data = execute(reader, writer, WsCmd::GetVersion, None).await?;
+pub async fn get_firmware_version(rw: &mut HidDevReaderWriter) -> ProtoResult<u16> {
+    let version_data = execute(rw, WsCmd::GetVersion, None).await?;
     let version_high = version_data[29] as u16;
     let version_low = version_data[28] as u16;
     Ok((version_high << 8) | version_low)
 }
 
-pub async fn reset(reader: &mut HidDevReader, writer: &mut HidDevWriter) -> ProtoResult<()> {
-    execute(reader, writer, WsCmd::ResetSettings, None).await?;
+pub async fn reset(rw: &mut HidDevReaderWriter) -> ProtoResult<()> {
+    execute(rw, WsCmd::ResetSettings, None).await?;
     Ok(())
 }
 
@@ -294,28 +288,18 @@ pub enum PollingRate {
     Hz125,
 }
 
-pub async fn get_function_info(
-    reader: &mut HidDevReader,
-    writer: &mut HidDevWriter,
-) -> ProtoResult<FunctionInfo> {
-    let info_data = execute(reader, writer, WsCmd::GetFunctionInfo, None).await?;
+pub async fn get_function_info(rw: &mut HidDevReaderWriter) -> ProtoResult<FunctionInfo> {
+    let info_data = execute(rw, WsCmd::GetFunctionInfo, None).await?;
     let info = FunctionInfo::read(&mut Cursor::new(info_data))?;
     Ok(info)
 }
 
 pub async fn set_function_info(
-    reader: &mut HidDevReader,
-    writer: &mut HidDevWriter,
+    rw: &mut HidDevReaderWriter,
     info: &FunctionInfo,
 ) -> ProtoResult<()> {
     let mut info_data = Cursor::new(Vec::with_capacity(WsCmd::SetFunctionInfo.data_len()));
     info.write(&mut info_data)?;
-    let _ = execute(
-        reader,
-        writer,
-        WsCmd::SetFunctionInfo,
-        Some(info_data.get_ref()),
-    )
-    .await?;
+    let _ = execute(rw, WsCmd::SetFunctionInfo, Some(info_data.get_ref())).await?;
     Ok(())
 }

@@ -3,7 +3,25 @@ use futures::StreamExt;
 
 use crate::error::{HidError, HidResult};
 
-pub type HidDevice = async_hid::Device;
+pub struct HidDevice(async_hid::Device);
+
+impl HidDevice {
+    pub async fn open(&self) -> HidResult<HidDevReaderWriter> {
+        let (reader, writer) = self.0.open().await?;
+        Ok((HidDevReader(reader), HidDevWriter(writer)))
+    }
+
+    fn to_device_info(self) -> HidDevInfo {
+        self.0.to_device_info()
+    }
+}
+
+impl From<async_hid::Device> for HidDevice {
+    fn from(value: async_hid::Device) -> Self {
+        HidDevice(value)
+    }
+}
+
 pub type HidDevInfo = async_hid::DeviceInfo;
 
 pub struct HidDevReader(async_hid::DeviceReader);
@@ -19,12 +37,6 @@ impl HidDevReader {
     }
 }
 
-impl From<async_hid::DeviceReader> for HidDevReader {
-    fn from(value: async_hid::DeviceReader) -> Self {
-        HidDevReader(value)
-    }
-}
-
 pub struct HidDevWriter(async_hid::DeviceWriter);
 
 impl HidDevWriter {
@@ -37,18 +49,13 @@ impl HidDevWriter {
     }
 }
 
-impl From<async_hid::DeviceWriter> for HidDevWriter {
-    fn from(value: async_hid::DeviceWriter) -> Self {
-        HidDevWriter(value)
-    }
-}
-
 pub type HidDevReaderWriter = (HidDevReader, HidDevWriter);
 
 pub async fn get_all() -> HidResult<Vec<HidDevInfo>> {
     let out = async_hid::HidBackend::default()
         .enumerate()
         .await?
+        .map(HidDevice::from)
         .map(HidDevice::to_device_info)
         .collect::<Vec<_>>()
         .await;
@@ -60,5 +67,6 @@ pub async fn find_device(devinfo: &HidDevInfo) -> HidResult<HidDevice> {
         .query_devices(&devinfo.id)
         .await?
         .next()
+        .map(HidDevice::from)
         .ok_or(HidError::NotConnected)
 }

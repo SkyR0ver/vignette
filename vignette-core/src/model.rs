@@ -74,39 +74,38 @@ impl Keyboard {
     }
 
     async fn open(&self) -> HidResult<HidDevReaderWriter> {
-        let (reader, writer) = self.dev.open().await?;
-        Ok((reader.into(), writer.into()))
+        self.dev.open().await
     }
 
     pub async fn get_battery_level(&self) -> ProtoResult<u8> {
-        let (mut reader, mut writer) = self.open().await?;
+        let mut rw = self.open().await?;
         match self.protocol {
-            ProtoName::Weisheng => weisheng::get_battery_level(&mut reader, &mut writer)
+            ProtoName::Weisheng => weisheng::get_battery_level(&mut rw)
                 .await
                 .map(|(level, _charging)| level),
         }
     }
 
     pub async fn get_charging_status(&self) -> ProtoResult<bool> {
-        let (mut reader, mut writer) = self.open().await?;
+        let mut rw = self.open().await?;
         match self.protocol {
-            ProtoName::Weisheng => weisheng::get_battery_level(&mut reader, &mut writer)
+            ProtoName::Weisheng => weisheng::get_battery_level(&mut rw)
                 .await
                 .map(|(_level, charging)| charging),
         }
     }
 
     pub async fn get_firmware_version(&self) -> ProtoResult<u16> {
-        let (mut reader, mut writer) = self.open().await?;
+        let mut rw = self.open().await?;
         match self.protocol {
-            ProtoName::Weisheng => weisheng::get_firmware_version(&mut reader, &mut writer).await,
+            ProtoName::Weisheng => weisheng::get_firmware_version(&mut rw).await,
         }
     }
 
     pub async fn reset(&self) -> ProtoResult<()> {
-        let (mut reader, mut writer) = self.open().await?;
+        let mut rw = self.open().await?;
         match self.protocol {
-            ProtoName::Weisheng => weisheng::reset(&mut reader, &mut writer).await,
+            ProtoName::Weisheng => weisheng::reset(&mut rw).await,
         }
     }
 }
